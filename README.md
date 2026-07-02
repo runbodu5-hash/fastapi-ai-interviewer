@@ -19,7 +19,7 @@ I built this project to solve production-level challenges in LLM deployment, spe
 
 💾 异步落盘：调用 aiofiles 模块实现多轮会话本地 JSON 账本的异步读写，避免常驻内存开销；会话结束后自动调用模型生成 Markdown 格式技术评估报告，并配置前端数据流式一键下载。
 
-3. 安装步骤 (Installation Steps)请确保您的本地开发环境已安装 Python 3.10+ 并配置好相关网络代理。克隆项目仓库Bashgit clone https://github.com/yourusername/fastapi-langchain-screener.git
+3. 安装步骤 (Installation Steps)请确保您的本地开发环境已安装 Python 3.10+ 并配置好相关网络代理。克隆项目仓库Bashgit clone https://github.com/runbodu5-hash/fastapi-langchain-screener.git
 cd fastapi-langchain-screener
 创建并激活虚拟环境Bashpython -m venv langchain_v1_env
 # Windows 激活命令:
