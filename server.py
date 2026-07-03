@@ -1,4 +1,18 @@
 import os
+from dotenv import load_dotenv
+
+# 💡 核心魔改：加上 override=True，强行命令系统扔掉内存里的老密钥，必须用文件里的新密钥！
+if os.path.exists(".env"):
+    load_dotenv(".env", override=True)
+elif os.path.exists(".env.example"):
+    load_dotenv(".env.example", override=True)
+# 2. 🚨 照妖镜调试打印：看看按绝对路径到底抓到密钥没有
+print("=" * 50)
+print("【🔍 系统启动状态彻查】")
+print(f"-> 检查 DEEPSEEK_KEY: {os.getenv('DEEPSEEK_API_KEY')[:10] if os.getenv('DEEPSEEK_API_KEY') else '❌ 居然是空的(None)'}")
+print(f"-> 检查 SILICON_KEY: {os.getenv('SILICONFLOW_API_KEY')[:10] if os.getenv('SILICONFLOW_API_KEY') else '❌ 居然是空的(None)'}")
+print("=" * 50)
+
 import re
 import io
 import datetime
@@ -20,15 +34,23 @@ from langchain_core.chat_history import InMemoryChatMessageHistory
 from langchain_chroma import Chroma
 
 app = FastAPI()
-
 # =====================================================================
 # 1. 基础配置与自动化目录创建
 # =====================================================================
-GLOBAL_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-os.environ["OPENAI_API_KEY"] = GLOBAL_API_KEY if GLOBAL_API_KEY else ""
-os.environ["OPENAI_API_BASE"] = os.getenv("DEEPSEEK_BASE_URL", "https://open.bigmodel.cn/api/paas/v4")
+# 动态读入 .env 中的 DeepSeek 配置
+DEEPSEEK_KEY = os.getenv("DEEPSEEK_API_KEY")
+DEEPSEEK_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
+DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
 
-embedding_engine = OpenAIEmbeddings(model="embedding-3")
+# 动态读入 .env 中的 硅基流动 配置
+SILICON_KEY = os.getenv("SILICONFLOW_API_KEY")
+
+# 💡 核心修正：无缝接入硅基流动上完全免费的顶级开源中文向量模型
+embedding_engine = OpenAIEmbeddings(
+    model="BAAI/bge-large-zh-v1.5",  # 硅基平台永久免费模型，精度极高
+    openai_api_key=SILICON_KEY,
+    openai_api_base="https://api.siliconflow.cn/v1"
+)
 vector_store = Chroma(persist_directory="./chroma_db", embedding_function=embedding_engine)
 
 HISTORY_DIR = Path(__file__).resolve().parent / "history"
@@ -112,8 +134,15 @@ def save_job_hunt_log(content: str) -> str:
 
 
 # ==================== 🧠 初始化大模型 ====================
-llm_pure = ChatOpenAI(model="glm-4-flash", openai_api_key=GLOBAL_API_KEY,
-                      openai_api_base="https://open.bigmodel.cn/api/paas/v4", temperature=0.1)
+# 💡 核心对齐：全量采用你的真实 DeepSeek 算力
+llm_pure = ChatOpenAI(
+    model=DEEPSEEK_MODEL,
+    openai_api_key=DEEPSEEK_KEY,
+    openai_api_base=DEEPSEEK_URL,
+    temperature=0.1
+)
+
+# 💡 完美复原：把原项目赖以生存的智能体工具箱重新绑定给 DeepSeek
 tools_map = {
     "search_local_jobs_and_policies": search_local_jobs_and_policies,
     "search_company_job_requirements": search_company_job_requirements,
@@ -123,7 +152,6 @@ tools_map = {
 }
 llm_with_tools = llm_pure.bind_tools(list(tools_map.values()))
 llm_structured = llm_pure.with_structured_output(InterviewReport)
-
 # ==================== 💾 ⚡ 升级：全面异步化硬核记忆网关 ⚡ ====================
 SESSION_STORE = {}
 
